@@ -9,10 +9,15 @@ workflows:
       app_store_connect: CodemagicKey   # TODO: name of your App Store Connect API key in Codemagic
     environment:
       groups:
-        - unity_credentials             # TODO: UNITY_SERIAL, UNITY_EMAIL, UNITY_PASSWORD (or UNITY_LICENSE)
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.antcolonycolors.game
+        - unity_credentials   
+                  # TODO: UNITY_SERIAL, UNITY_EMAIL, UNITY_PASSWORD (or UNITY_LICENSE)
+        - name: Set up code signing (automatic)
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "com.antcolonycolors.game" \
+            --type IOS_APP_STORE --create \
+            --certificate-key "$CERTIFICATE_PRIVATE_KEY"
+          keychain add-certificates
       vars:
         UNITY_VERSION: 6000.6.7f1
         UNITY_CHANGESET: b22767f04f04
