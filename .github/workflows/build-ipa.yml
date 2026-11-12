@@ -16,7 +16,7 @@ permissions:
 jobs:
   sign-ipa:
     name: Create Signed IPA
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     timeout-minutes: 90
 
     steps:
