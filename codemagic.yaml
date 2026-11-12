@@ -27,7 +27,6 @@ workflows:
       cocoapods: default
 
     scripts:
-
       - name: Download Unity Xcode Project
         script: |
           set -euo pipefail
@@ -35,8 +34,6 @@ workflows:
           : "${GITHUB_ARTIFACT_TOKEN:?Missing GitHub token}"
 
           API="https://api.github.com/repos/$GITHUB_REPO"
-
-          echo "Fetching Unity iOS build artifact..."
 
           curl -fsSL --retry 3 \
             -H "Accept: application/vnd.github+json" \
@@ -46,26 +43,18 @@ workflows:
 
           ARTIFACT_ID="$(python3 - <<'PY'
           import json
-
           with open("/tmp/artifacts.json") as f:
               data = json.load(f)
-
           matches = [
               a for a in data.get("artifacts", [])
               if a.get("name") == "iOS-Xcode-Project"
               and not a.get("expired", False)
           ]
-
           if not matches:
-              raise SystemExit(
-                  "ERROR: iOS artifact not found or expired"
-              )
-
+              raise SystemExit("iOS artifact missing or expired")
           print(matches[0]["id"])
           PY
           )"
-
-          echo "Downloading artifact ID: $ARTIFACT_ID"
 
           curl -fsSL --retry 3 \
             -H "Accept: application/vnd.github+json" \
@@ -74,7 +63,6 @@ workflows:
             -o /tmp/ios-project.zip
 
           mkdir -p "$CM_BUILD_DIR/ios-export"
-
           unzip -q /tmp/ios-project.zip \
             -d "$CM_BUILD_DIR/ios-export"
 
@@ -82,116 +70,127 @@ workflows:
             -type d -name "Unity-iPhone.xcodeproj" \
             -print -quit)
 
-          if [ -z "$PROJECT" ]; then
-            echo "ERROR: Unity Xcode project not found"
-            exit 1
-          fi
+          test -n "$PROJECT"
 
           IOS_DIR=$(dirname "$PROJECT")
-
           echo "IOS_DIR=$IOS_DIR" >> "$CM_ENV"
 
-          echo "Unity Xcode project ready!"
-          echo "Project: $PROJECT"
+          echo "Xcode project downloaded successfully"
 
-      - name: Install CocoaPods Dependencies
+      - name: Install CocoaPods
         script: |
           set -e
           cd "$IOS_DIR"
-
-          if [ -f "Podfile" ]; then
-            echo "Installing CocoaPods..."
+          if [ -f Podfile ]; then
             pod install --repo-update
-          else
-            echo "No Podfile found."
           fi
 
       - name: Fix Script Permissions
         script: |
-          set -e
-
           find "$IOS_DIR" -type f -name "*.sh" \
             -exec chmod +x {} \;
 
-          echo "Script permissions configured."
-
-      
-      
       - name: Configure Apple Code Signing
         script: |
-          set -e
+          set -euo pipefail
           cd "$IOS_DIR"
-
-          echo "Configuring App Store signing..."
 
           xcode-project use-profiles \
             --project "$IOS_DIR/Unity-iPhone.xcodeproj" \
             --archive-method app-store
 
-          echo "Generating valid ExportOptions.plist..."
-
           python3 - <<'PY'
+          import os
           import plistlib
           from pathlib import Path
 
-          path = Path.home() / "export_options.plist"
+          source = Path.home() / "export_options.plist"
+          target = Path(os.environ["IOS_DIR"]) / "ExportOptions.plist"
 
-          with path.open("rb") as f:
+          with source.open("rb") as f:
               options = plistlib.load(f)
+
+          if not isinstance(options, dict):
+              raise SystemExit("Invalid export options")
+
+          profiles = options.get("provisioningProfiles", {})
+          bundle_id = os.environ["IOS_BUNDLE_ID"]
+
+          if bundle_id not in profiles:
+              raise SystemExit(
+                  f"No provisioning profile for {bundle_id}"
+              )
 
           options["method"] = "app-store-connect"
           options["destination"] = "export"
 
-          with path.open("wb") as f:
-              plistlib.dump(
-                  options,
-                  f,
-                  fmt=plistlib.FMT_XML,
-                  sort_keys=False
-              )
+          with target.open("wb") as f:
+              plistlib.dump(options, f, fmt=plistlib.FMT_XML)
 
-          with path.open("rb") as f:
+          with target.open("rb") as f:
               verified = plistlib.load(f)
 
           assert verified["method"] == "app-store-connect"
 
-          print("Valid XML plist generated!")
-          print("Export method:", verified["method"])
-          print("Signing style:", verified.get("signingStyle"))
+          print("ExportOptions verified")
+          print("Method:", verified["method"])
+          print("Bundle ID:", bundle_id)
           PY
 
-          plutil -lint "$HOME/export_options.plist"
+          plutil -lint "$IOS_DIR/ExportOptions.plist"
 
-
-      - name: Build Signed IPA
+      - name: Archive and Export Signed IPA
         script: |
-          set -e
+          set -euo pipefail
           cd "$IOS_DIR"
 
-          echo "Building Ant Colony Colors IPA..."
+          ARCHIVE_PATH="$IOS_DIR/build/ios/xcarchive/AntColonyColors.xcarchive"
+          IPA_DIR="$IOS_DIR/build/ios/ipa"
+          EXPORT_PLIST="$IOS_DIR/ExportOptions.plist"
+
+          mkdir -p "$(dirname "$ARCHIVE_PATH")"
+          mkdir -p "$IPA_DIR"
+
+          echo "Starting Xcode archive..."
 
           if [ -d "Unity-iPhone.xcworkspace" ]; then
-
-            xcode-project build-ipa \
-              --workspace "$IOS_DIR/Unity-iPhone.xcworkspace" \
-              --scheme "Unity-iPhone" \
-              --export-options-plist "$HOME/export_options.plist"
-
+            xcodebuild archive \
+              -workspace "$IOS_DIR/Unity-iPhone.xcworkspace" \
+              -scheme "Unity-iPhone" \
+              -configuration Release \
+              -destination "generic/platform=iOS" \
+              -archivePath "$ARCHIVE_PATH" \
+              2>&1 | tee "$CM_BUILD_DIR/archive.log"
           else
-
-            xcode-project build-ipa \
-              --project "$IOS_DIR/Unity-iPhone.xcodeproj" \
-              --scheme "Unity-iPhone" \
-              --export-options-plist "$HOME/export_options.plist"
-
+            xcodebuild archive \
+              -project "$IOS_DIR/Unity-iPhone.xcodeproj" \
+              -scheme "Unity-iPhone" \
+              -configuration Release \
+              -destination "generic/platform=iOS" \
+              -archivePath "$ARCHIVE_PATH" \
+              2>&1 | tee "$CM_BUILD_DIR/archive.log"
           fi
 
-          echo "IPA build step completed!"
+          echo "Archive complete. Exporting IPA..."
 
-          find "$IOS_DIR" -type f -name "*.ipa" \
-            -print
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$IPA_DIR" \
+            -exportOptionsPlist "$EXPORT_PLIST" \
+            2>&1 | tee "$CM_BUILD_DIR/export.log"
+
+          echo "Checking IPA output..."
+
+          find "$IPA_DIR" -name "*.ipa" -type f -print
+
+          if ! find "$IPA_DIR" -name "*.ipa" -type f | grep -q .; then
+            echo "ERROR: No IPA produced"
+            exit 1
+          fi
+
+          echo "Signed IPA exported successfully!"
 
     artifacts:
       - ios-export/**/build/ios/ipa/*.ipa
-      - ios-export/**/build/ios/xcarchive/*.xcarchive
-      - /tmp/xcodebuild_logs/*.log
+      - archive.log
+      - export.log
