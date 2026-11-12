@@ -1,23 +1,13 @@
-# Codemagic CI for Ant Colony Colors (Unity -> Xcode -> TestFlight).
-# Fill the placeholders marked TODO in Codemagic (see docs/CODEMAGIC_SETUP.md).
 workflows:
   ios-release:
     name: Ant Colony Colors iOS
     instance_type: mac_mini_m2
     max_build_duration: 90
     integrations:
-      app_store_connect: CodemagicKey   # TODO: name of your App Store Connect API key in Codemagic
+      app_store_connect: CodemagicKey
     environment:
       groups:
-        - unity_credentials   
-                  # TODO: UNITY_SERIAL, UNITY_EMAIL, UNITY_PASSWORD (or UNITY_LICENSE)
-        - name: Set up code signing (automatic)
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "com.antcolonycolors.game" \
-            --type IOS_APP_STORE --create \
-            --certificate-key "$CERTIFICATE_PRIVATE_KEY"
-          keychain add-certificates
+        - unity_credentials
       vars:
         UNITY_VERSION: 6000.6.7f1
         UNITY_CHANGESET: b22767f04f04
@@ -60,11 +50,17 @@ workflows:
         script: |
           cd "$CM_BUILD_DIR/$EXPORT_DIR"
           if [ -f Podfile ]; then pod install --repo-update; fi
+      - name: Set up code signing (automatic)
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "com.antcolonycolors.game" \
+            --type IOS_APP_STORE --create \
+            --certificate-key "$CERTIFICATE_PRIVATE_KEY"
+          keychain add-certificates
       - name: Set provisioning profile and build number
         script: |
           cd "$CM_BUILD_DIR/$EXPORT_DIR"
           xcode-project use-profiles
-          # Next build number = latest TestFlight build + 1 (falls back to Codemagic's own counter).
           LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null | tail -1)
           case "$LATEST" in ''|*[!0-9]*) LATEST=0;; esac
           NEXT=$((LATEST + 1))
