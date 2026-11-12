@@ -194,3 +194,8 @@ workflows:
       - ios-export/**/build/ios/ipa/*.ipa
       - archive.log
       - export.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+
