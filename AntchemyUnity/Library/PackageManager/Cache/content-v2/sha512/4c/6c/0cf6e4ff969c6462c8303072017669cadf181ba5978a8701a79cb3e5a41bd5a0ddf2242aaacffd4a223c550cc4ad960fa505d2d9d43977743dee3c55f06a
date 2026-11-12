@@ -1,1 +1,0 @@
-{"status":"Valid","reason":"Signature is ok","isLegacy":false,"attestation":{"version":1,"format":"archive","integrity":"sha256-rzj1pX/AGPHPleQpKAhflqllkvkYwB3fEATAS5WKcpI=","packageName":"com.unity.external-dependency-manager","packageVersion":"2.1.0","publishingChannel":"unity","entitlementKeys":[],"artifactType":"upmPackage"}}
