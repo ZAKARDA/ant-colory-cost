@@ -1,0 +1,12 @@
+{
+  "hosting": { "site": "ant-colony-colors", 
+    "public": "public",
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      { "source": "/app-ads.txt", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] },
+      { "source": "**/*.@(css|svg|png)", "headers": [{ "key": "Cache-Control", "value": "max-age=86400" }] }
+    ]
+  }
+}

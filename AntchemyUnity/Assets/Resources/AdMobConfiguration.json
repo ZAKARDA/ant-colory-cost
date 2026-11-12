@@ -1,0 +1,17 @@
+{
+  "useTestAds": false,
+  "rewardedEnabled": true,
+  "interstitialEnabled": true,
+  "appOpenEnabled": true,
+  "appOpenLaunchWaitSeconds": 4,
+  "appOpenMinimumBackgroundSeconds": 30,
+  "winsBetweenInterstitials": 1,
+  "minimumSecondsBetweenAds": 60,
+  "firstInterstitialDelaySeconds": 30,
+  "androidRewardedUnitId": "",
+  "iosRewardedUnitId": "ca-app-pub-9283129936552011/8348252439",
+  "androidInterstitialUnitId": "",
+  "iosInterstitialUnitId": "ca-app-pub-9283129936552011/2353689720",
+  "androidAppOpenUnitId": "",
+  "iosAppOpenUnitId": "ca-app-pub-9283129936552011/3447279540"
+}

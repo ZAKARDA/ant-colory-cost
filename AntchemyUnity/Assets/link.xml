@@ -1,0 +1,8 @@
+<linker>
+  <!-- CreatePrimitive requests these native components by name before decorative
+       ant shapes remove their colliders. Keep them in stripped mobile players. -->
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.SphereCollider" preserve="all" />
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all" />
+  </assembly>
+</linker>

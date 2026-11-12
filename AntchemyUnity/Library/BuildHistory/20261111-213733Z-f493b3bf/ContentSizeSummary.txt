@@ -1,0 +1,27 @@
+-------------------------------------------------------------------------------
+Build Report - Content Size Statistics
+Serialized File count                      4
+Resource file count                        4
+Object count                             469
+Serialized Files                       3.5 mb	  32.2%
+Serialized Files Headers              15.4 kb	   0.1%
+Resource data (Texture,Audio...)       7.3 mb	  67.8%
+Total build size                      10.8 mb
+
+Largest Types:
+     8.7 mb	  80.6% Texture2D
+   818.6 kb	   7.4% TextAsset
+   512.2 kb	   4.6% Cubemap
+   307.4 kb	   2.8% TextRendering::Font
+   286.0 kb	   2.6% Sprite
+   127.3 kb	   1.2% AudioClip
+
+Largest Assets:
+   837.6 kb	   7.6% Assets/Resources/UI/HomeAntCups.png
+   748.6 kb	   6.8% Assets/Resources/UI/LabAntScientist.png
+   723.4 kb	   6.6% Assets/Resources/UI/LabAntMixing.png
+   713.7 kb	   6.5% Assets/Resources/UI/HomeAntWelcome.png
+   532.6 kb	   4.8% Resources/unity_builtin_extra
+   155.2 kb	   1.4% Assets/Resources/Fonts/Poppins-Medium.ttf
+   152.7 kb	   1.4% Assets/Resources/Fonts/Poppins-Bold.ttf
+-------------------------------------------------------------------------------

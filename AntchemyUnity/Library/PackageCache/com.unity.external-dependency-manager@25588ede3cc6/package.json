@@ -1,0 +1,24 @@
+{
+  "name": "com.unity.external-dependency-manager",
+  "version": "2.1.0",
+  "displayName": "External Dependency Manager",
+  "keywords": [],
+  "description": "External Dependency Manager helps Unity projects automatically resolve and manage native plugin dependencies (e.g., Android/iOS libraries).",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.unity.modules.uielements": "1.0.0"
+  },
+  "relatedPackages": {
+    "com.unity.external-dependency-manager.tests": "0.0.0"
+  },
+  "repository": {
+    "revision": "dba4cb0bdf5a8ad80d1e25024ddfdec3342e7c3c",
+    "type": "git",
+    "url": "https://github.cds.internal.unity3d.com/unity/com.unity.external-dependency-manager.git"
+  },
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.external-dependency-manager@2.1/manual/index.html",
+  "_upm": {
+    "changelog": "### Changes & Improvements:\n- Added a possibility to set SPM dependency target\n- Improved UI\n- Settings moved to Project Settings\n- Removed AAR Resolution mode and related settings\n- Improved Cocoapods and Ruby detection & installation\n\n### Fixes:\n- Fixed an error on Android where Resolution would not run due to Assets/Plugins/Android folder missing. That folder is now created automatically."
+  },
+  "_fingerprint": "25588ede3cc6577b496fb9f47a380c0b0a1996d9"
+}

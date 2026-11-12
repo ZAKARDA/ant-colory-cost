@@ -1,0 +1,33 @@
+{
+    "Version": 2,
+    "BuildContentOptions": [
+        "None"
+    ],
+    "BuildManifestHash": "00000000000000000000000000000000",
+    "BuildName": "Ant Colony Colors",
+    "BuildOptions": [
+        "ForceOptimizeScriptCompilation",
+        "Il2CPP",
+        "CompressTextures",
+        "StripDebugSymbols",
+        "ShaderLivelinkSupport",
+        "Development"
+    ],
+    "BuildProfilePath": "",
+    "BuildResult": 1,
+    "BuildResultName": "Succeeded",
+    "BuildSessionGUID": "f493b3bf65d3a4c68943d126fdfb6252",
+    "BuildStartedAt": "2026-11-11T21:37:33.3181130Z",
+    "BuildType": 1,
+    "BuildTypeName": "Player",
+    "ContentSourceBuildSessionGUID": "00000000000000000000000000000000",
+    "OutputPath": "/Users/Apple/Documents/ChatGPT/colony flow/colony-flow-clean/AntchemyUnity/../Builds/AntColonyColors-iOS",
+    "Platform": 9,
+    "PlatformName": "iOS",
+    "Subtarget": 2,
+    "SubtargetName": "2",
+    "TotalErrors": 0,
+    "TotalSizeBytes": 995427795,
+    "TotalTimeMs": 15291,
+    "TotalWarnings": 2
+}
