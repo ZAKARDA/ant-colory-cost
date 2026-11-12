@@ -13,8 +13,8 @@ jobs:
           lfs: true
       - uses: actions/cache@v4
         with:
-          path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          path: AntchemyUnity/Library
+          key: Library-${{ hashFiles('AntchemyUnity/Assets/**', 'AntchemyUnity/Packages/**', 'AntchemyUnity/ProjectSettings/**') }}
           restore-keys: Library-
       - uses: game-ci/unity-builder@v4
         env:
@@ -22,6 +22,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
+          projectPath: AntchemyUnity
           targetPlatform: Android
       - uses: actions/upload-artifact@v4
         with:
