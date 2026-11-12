@@ -20,7 +20,7 @@ workflows:
 
       vars:
         GITHUB_REPO: "ZAKARDA/ant-colory-cost"
-        GITHUB_RUN_ID: "42348247593"
+        GITHUB_RUN_ID: "43248247593"
         IOS_BUNDLE_ID: "com.antcolonycolors.game"
 
       xcode: latest
