@@ -1,13 +1,17 @@
+# Codemagic CI for Ant Colony Colors (Unity -> Xcode -> TestFlight).
 workflows:
   ios-release:
     name: Ant Colony Colors iOS
     instance_type: mac_mini_m2
     max_build_duration: 90
     integrations:
-      app_store_connect: CodemagicKey
+      app_store_connect: "Ant Colony Colors: Sort Puzzle"
     environment:
       groups:
         - unity_credentials
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.antcolonycolors.game
       vars:
         UNITY_VERSION: 6000.6.7f1
         UNITY_CHANGESET: b22767f04f04
@@ -50,13 +54,6 @@ workflows:
         script: |
           cd "$CM_BUILD_DIR/$EXPORT_DIR"
           if [ -f Podfile ]; then pod install --repo-update; fi
-      - name: Set up code signing (automatic)
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "com.antcolonycolors.game" \
-            --type IOS_APP_STORE --create \
-            --certificate-key "$CERTIFICATE_PRIVATE_KEY"
-          keychain add-certificates
       - name: Set provisioning profile and build number
         script: |
           cd "$CM_BUILD_DIR/$EXPORT_DIR"
