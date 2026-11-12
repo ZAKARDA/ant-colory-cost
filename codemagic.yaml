@@ -110,13 +110,19 @@ workflows:
           find "$IOS_DIR" -type f -name "*.sh" \
             -exec chmod +x {} \;
 
+      
       - name: Configure Apple Code Signing
         script: |
           set -e
           cd "$IOS_DIR"
 
           xcode-project use-profiles \
-            --project "$IOS_DIR/Unity-iPhone.xcodeproj"
+            --project "$IOS_DIR/Unity-iPhone.xcodeproj" \
+            --archive-method app-store
+
+          echo "Export configuration:"
+          plutil -p "$HOME/export_options.plist"
+
 
       - name: Build Signed IPA
         script: |
@@ -137,6 +143,9 @@ workflows:
 
           echo "IPA build step completed!"
 
+    
     artifacts:
-      - build/ios/ipa/*.ipa
+      - ios-export/**/build/ios/ipa/*.ipa
+      - ios-export/**/build/ios/xcarchive/*.xcarchive
       - /tmp/xcodebuild_logs/*.log
+
