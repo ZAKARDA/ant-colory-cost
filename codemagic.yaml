@@ -1,82 +1,142 @@
-# Codemagic CI for Ant Colony Colors (Unity -> Xcode -> TestFlight).
+
 workflows:
   ios-release:
-    name: Ant Colony Colors iOS
+    name: Ant Colony Colors - Signed IPA
     instance_type: mac_mini_m2
     max_build_duration: 90
+
     integrations:
-      app_store_connect: "Ant Colony Colors: Sort Puzzle"
+      app_store_connect: AntColonyKey
+
     environment:
       groups:
-        - unity_credentials
+        - github_artifact
+
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.antcolonycolors.game
+        certificates:
+          - AntColonyAppStoreCert
+        provisioning_profiles:
+          - AntColonyAppStoreProfile
+
       vars:
-        UNITY_VERSION: 6000.6.7f1
-        UNITY_CHANGESET: b22767f04f04
-        EXPORT_DIR: Builds/AntColonyColors-iOS
+        GITHUB_REPO: "ZAKARDA/ant-colory-cost"
+        GITHUB_RUN_ID: "42348247593"
+        IOS_BUNDLE_ID: "com.antcolonycolors.game"
+
       xcode: latest
       cocoapods: default
+
     scripts:
-      - name: Install Unity (with iOS support)
+      - name: Download Unity Xcode Project
         script: |
-          UNITY_APP="/Applications/Unity/Hub/Editor/$UNITY_VERSION/Unity.app"
-          if [ ! -d "$UNITY_APP" ]; then
-            HUB="/Applications/Unity Hub.app/Contents/MacOS/Unity Hub"
-            if [ ! -x "$HUB" ]; then
-              curl -fsSL -o /tmp/UnityHubSetup.dmg https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.dmg
-              hdiutil attach /tmp/UnityHubSetup.dmg -nobrowse -quiet
-              cp -R "/Volumes/Unity Hub"*/"Unity Hub.app" /Applications/
-              hdiutil detach "/Volumes/Unity Hub"* -quiet || true
-            fi
-            "$HUB" -- --headless install --version "$UNITY_VERSION" --changeset "$UNITY_CHANGESET"
-            "$HUB" -- --headless install-modules --version "$UNITY_VERSION" --module ios
+          set -euo pipefail
+
+          : "${GITHUB_ARTIFACT_TOKEN:?Missing GitHub token}"
+
+          API="https://api.github.com/repos/$GITHUB_REPO"
+
+          echo "Fetching Unity iOS build artifact..."
+
+          curl -fsSL --retry 3 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_ARTIFACT_TOKEN" \
+            "$API/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+            -o /tmp/artifacts.json
+
+          ARTIFACT_ID="$(python3 - <<'PY'
+          import json
+
+          with open("/tmp/artifacts.json") as f:
+              data = json.load(f)
+
+          matches = [
+              a for a in data.get("artifacts", [])
+              if a.get("name") == "iOS-Xcode-Project"
+              and not a.get("expired", False)
+          ]
+
+          if not matches:
+              raise SystemExit(
+                  "ERROR: iOS artifact not found or expired"
+              )
+
+          print(matches[0]["id"])
+          PY
+          )"
+
+          echo "Downloading artifact ID: $ARTIFACT_ID"
+
+          curl -fsSL --retry 3 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_ARTIFACT_TOKEN" \
+            "$API/actions/artifacts/$ARTIFACT_ID/zip" \
+            -o /tmp/ios-project.zip
+
+          mkdir -p "$CM_BUILD_DIR/ios-export"
+
+          unzip -q /tmp/ios-project.zip \
+            -d "$CM_BUILD_DIR/ios-export"
+
+          PROJECT=$(find "$CM_BUILD_DIR/ios-export" \
+            -type d -name "Unity-iPhone.xcodeproj" \
+            -print -quit)
+
+          if [ -z "$PROJECT" ]; then
+            echo "ERROR: Unity Xcode project not found"
+            exit 1
           fi
-          echo "UNITY_BIN=$UNITY_APP/Contents/MacOS/Unity" >> $CM_ENV
-      - name: Activate Unity license
+
+          IOS_DIR=$(dirname "$PROJECT")
+
+          echo "IOS_DIR=$IOS_DIR" >> "$CM_ENV"
+
+          echo "Unity Xcode project ready!"
+          echo "Project: $PROJECT"
+
+      - name: Install CocoaPods Dependencies
         script: |
-          if [ -n "$UNITY_SERIAL" ]; then
-            "$UNITY_BIN" -batchmode -quit -nographics -serial "$UNITY_SERIAL" -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" -logFile -
-          elif [ -n "$UNITY_LICENSE" ]; then
-            mkdir -p "/Library/Application Support/Unity"
-            echo "$UNITY_LICENSE" > "/Library/Application Support/Unity/Unity_lic.ulf"
+          set -e
+          cd "$IOS_DIR"
+
+          if [ -f "Podfile" ]; then
+            echo "Installing iOS dependencies..."
+            pod install --repo-update
           else
-            echo "No Unity license provided"; exit 1
+            echo "No Podfile found. Skipping CocoaPods."
           fi
-      - name: Export Xcode project from Unity
+
+      - name: Fix Script Permissions
         script: |
-          "$UNITY_BIN" -batchmode -nographics -quit -buildTarget iOS \
-            -projectPath "$CM_BUILD_DIR/AntchemyUnity" \
-            -executeMethod Antchemy.Editor.SceneSetup.BuildIOS \
-            -logFile - || { echo "Unity export failed"; exit 1; }
-      - name: Install CocoaPods dependencies
+          find "$IOS_DIR" -type f -name "*.sh" \
+            -exec chmod +x {} \;
+
+      - name: Configure Apple Code Signing
         script: |
-          cd "$CM_BUILD_DIR/$EXPORT_DIR"
-          if [ -f Podfile ]; then pod install --repo-update; fi
-      - name: Set provisioning profile and build number
+          set -e
+          cd "$IOS_DIR"
+
+          xcode-project use-profiles \
+            --project "$IOS_DIR/Unity-iPhone.xcodeproj"
+
+      - name: Build Signed IPA
         script: |
-          cd "$CM_BUILD_DIR/$EXPORT_DIR"
-          xcode-project use-profiles
-          # Next build number = latest TestFlight build + 1 (falls back to Codemagic's own counter).
-          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null | tail -1)
-          case "$LATEST" in ''|*[!0-9]*) LATEST=0;; esac
-          NEXT=$((LATEST + 1))
-          if [ "$NEXT" -le "${BUILD_NUMBER:-0}" ]; then NEXT=$BUILD_NUMBER; fi
-          echo "Using build number $NEXT"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEXT" Info.plist
-      - name: Build IPA
-        script: |
-          cd "$CM_BUILD_DIR/$EXPORT_DIR"
-          if [ -d Unity-iPhone.xcworkspace ]; then
-            xcode-project build-ipa --workspace "$PWD/Unity-iPhone.xcworkspace" --scheme Unity-iPhone
+          set -e
+          cd "$IOS_DIR"
+
+          echo "Building Ant Colony Colors IPA..."
+
+          if [ -d "Unity-iPhone.xcworkspace" ]; then
+            xcode-project build-ipa \
+              --workspace "$IOS_DIR/Unity-iPhone.xcworkspace" \
+              --scheme "Unity-iPhone"
           else
-            xcode-project build-ipa --project "$PWD/Unity-iPhone.xcodeproj" --scheme Unity-iPhone
+            xcode-project build-ipa \
+              --project "$IOS_DIR/Unity-iPhone.xcodeproj" \
+              --scheme "Unity-iPhone"
           fi
+
+          echo "IPA build step completed!"
+
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
