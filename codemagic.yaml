@@ -22,6 +22,7 @@ workflows:
         GITHUB_REPO: "ZAKARDA/ant-colory-cost"
         GITHUB_RUN_ID: "43316049436"
         IOS_BUNDLE_ID: "com.antcolonycolors.game"
+        APP_BUILD_NUMBER: "2"
 
       xcode: latest
       cocoapods: default
@@ -84,6 +85,23 @@ workflows:
           if [ -f Podfile ]; then
             pod install --repo-update
           fi
+           
+      - name: Set iOS Build Number
+        script: |
+          set -euo pipefail
+
+          INFO_PLIST="$IOS_DIR/Info.plist"
+          test -f "$INFO_PLIST"
+
+          plutil -replace CFBundleVersion \
+            -string "$APP_BUILD_NUMBER" \
+            "$INFO_PLIST"
+
+          echo "iOS Build Number:"
+          plutil -extract CFBundleVersion raw \
+            -o - "$INFO_PLIST"
+          echo
+
 
       - name: Fix Script Permissions
         script: |
@@ -196,11 +214,13 @@ workflows:
       - export.log
 
     
+    
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: true
         release_type: MANUAL
+
 
 
