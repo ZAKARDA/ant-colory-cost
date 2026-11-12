@@ -116,26 +116,52 @@ workflows:
           echo "Script permissions configured."
 
       
+      
       - name: Configure Apple Code Signing
         script: |
           set -e
           cd "$IOS_DIR"
 
+          echo "Configuring App Store signing..."
+
           xcode-project use-profiles \
             --project "$IOS_DIR/Unity-iPhone.xcodeproj" \
-            --archive-method app-store \
-            --verbose
+            --archive-method app-store
 
-          EXPORT_PLIST="$HOME/export_options.plist"
+          echo "Generating valid ExportOptions.plist..."
 
-          test -f "$EXPORT_PLIST"
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
 
-          plutil -replace method \
-            -string app-store-connect \
-            "$EXPORT_PLIST"
+          path = Path.home() / "export_options.plist"
 
-          plutil -lint "$EXPORT_PLIST"
-          plutil -p "$EXPORT_PLIST"
+          with path.open("rb") as f:
+              options = plistlib.load(f)
+
+          options["method"] = "app-store-connect"
+          options["destination"] = "export"
+
+          with path.open("wb") as f:
+              plistlib.dump(
+                  options,
+                  f,
+                  fmt=plistlib.FMT_XML,
+                  sort_keys=False
+              )
+
+          with path.open("rb") as f:
+              verified = plistlib.load(f)
+
+          assert verified["method"] == "app-store-connect"
+
+          print("Valid XML plist generated!")
+          print("Export method:", verified["method"])
+          print("Signing style:", verified.get("signingStyle"))
+          PY
+
+          plutil -lint "$HOME/export_options.plist"
+
 
       - name: Build Signed IPA
         script: |
