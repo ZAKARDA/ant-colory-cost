@@ -115,29 +115,27 @@ workflows:
 
           echo "Script permissions configured."
 
+      
       - name: Configure Apple Code Signing
         script: |
           set -e
           cd "$IOS_DIR"
 
-          echo "Configuring App Store signing..."
-
           xcode-project use-profiles \
             --project "$IOS_DIR/Unity-iPhone.xcodeproj" \
             --archive-method app-store \
-            --custom-export-options '{"method":"app-store-connect"}'
+            --verbose
 
-          echo "Checking export options..."
+          EXPORT_PLIST="$HOME/export_options.plist"
 
-          if [ ! -f "$HOME/export_options.plist" ]; then
-            echo "ERROR: Export options missing"
-            exit 1
-          fi
+          test -f "$EXPORT_PLIST"
 
-          plutil -lint "$HOME/export_options.plist"
-          plutil -p "$HOME/export_options.plist"
+          plutil -replace method \
+            -string app-store-connect \
+            "$EXPORT_PLIST"
 
-          echo "Apple signing configured."
+          plutil -lint "$EXPORT_PLIST"
+          plutil -p "$EXPORT_PLIST"
 
       - name: Build Signed IPA
         script: |
